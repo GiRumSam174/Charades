@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+    <title>Sensor Charades v1.05</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a2e;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+            user-select: none; /* Prevents accidental text highlighting */
+        }
+
+        #game-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.3s;
+        }
+
+        #word-display {
+            font-size: 5rem;
+            font-weight: bold;
+            padding: 20px;
+            text-transform: uppercase;
+        }
+
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 1.5rem;
+        }
+
+        #timer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1.5rem;
+            color: #f39c12;
+        }
+
+        #sensor-status {
+            position: absolute;
+            bottom: 20px;
+            font-size: 0.9rem;
+            color: #e74c3c;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        button {
+            padding: 20px 40px;
+            font-size: 2rem;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .correct { background-color: #2ecc71 !important; }
+        .pass { background-color: #e74c3c !important; }
+    </style>
+</head>
+<body>
+
+    <div id="overlay" class="overlay">
+        <h1>SENSOR CHARADES</h1>
+        <p>Hold phone to forehead in Landscape.</p>
+        <p>Tilt UP (Ceiling) for Correct | Tilt DOWN (Floor) to Pass</p>
+        <button onclick="startGame()">START GAME</button>
+        <div style="position: absolute; bottom: 10px; font-size: 0.8rem; color: #7f8c8d;">v1.05</div>
+    </div>
+
+    <div id="game-container">
+        <div id="score">Score: 0</div>
+        <div id="timer">Time: 15</div> 
+        <div id="word-display">READY?</div>
+        <div id="sensor-status">Sensors: Waiting... (Must be HTTPS)</div>
+    </div>
+
+    <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker Registered!', reg))
+                    .catch(err => console.error('Service Worker Registration Failed!', err));
+            });
+        }
+
+        const words = [
+            "Pizza", "Elephant", "Moonwalk", "Superhero", "Sneeze", "Taco", "Surfing", "Guitar", "Dentist", "Gorilla",
+            "Basketball", "Chef", "Submarine", "Spider-Man", "Washing Machine", "Yoga", "Butterfly", "Ice Cream", "Zebra", "Airplane",
+            "Fishing", "Harry Potter", "Roller Coaster", "Robot", "Statue of Liberty", "Lawn Mower", "Ballet", "Pirate", "Firefighter", "Popcorn",
+            "Jurassic Park", "The Lord of the Rings", "Back to the Future", "Jaws", "Ghostbusters", "E.T.", 
+            "Walking the Dog", "Doing Laundry", "Taking out the Trash", "Parallel Parking", "Riding a Unicycle"
+        ]; // Shortened for display, you can paste the full list back in!
+
+        let score = 0;
+        let timeLeft = 15; 
+        let gameActive = false;
+        
+        let isNeutral = false; 
+        let isProcessing = false; 
+        let sensorsConfirmed = false;
+        
+        const wordDisplay = document.getElementById('word-display');
+        const scoreDisplay = document.getElementById('score');
+        const timerDisplay = document.getElementById('timer');
+        const sensorStatus = document.getElementById('sensor-status');
+        const container = document.getElementById('game-container');
+        
+        let audioCtx;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.5);
+            } else {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(110, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.6);
+            }
+        }
+
+        function nextWord() {
+            if (words.length === 0) return "Game Over!";
+            const randomIndex = Math.floor(Math.random() * words.length);
+            const word = words.splice(randomIndex, 1)[0];
+            wordDisplay.innerText = word;
+            isProcessing = false; 
+        }
+
+        function handleGuess(type) {
+            if (isProcessing) return;
+            isProcessing = true;
+            isNeutral = false; 
+
+            if (type === 'correct') {
+                score++;
+                scoreDisplay.innerText = `Score: ${score}`;
+                container.classList.add('correct');
+                playSound('correct');
+            } else {
+                container.classList.add('pass');
+                playSound('pass');
+            }
+
+            setTimeout(() => {
+                container.classList.remove('correct', 'pass');
+                nextWord();
+            }, 500);
+        }
+
+        function handleMotion(event) {
+            let z = event.accelerationIncludingGravity ? event.accelerationIncludingGravity.z : null;
+            
+            // FIX: Only confirm sensors if Z actually has a numeric value (not null)
+            if (!sensorsConfirmed && z !== null) {
+                sensorsConfirmed = true;
+                sensorStatus.innerText = "Sensors: Active!";
+                sensorStatus.style.color = "#2ecc71";
+            }
+
+            if (!gameActive || isProcessing || z === null) return; 
+
+            if (Math.abs(z) < 4) {
+                isNeutral = true;
+            } else if (z > 6 && isNeutral) {
+                handleGuess('correct');
+            } else if (z < -6 && isNeutral) {
+                handleGuess('pass');
+            }
+        }
+
+        async function startGame() {
+            initAudio(); 
+
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                try {
+                    const permission = await DeviceMotionEvent.requestPermission();
+                    if (permission !== 'granted') return alert("Sensor Permission Denied!");
+                } catch (e) { console.error(e); }
+            }
+
+            document.getElementById('overlay').style.display = 'none';
+            
+            let countdown = 3;
+            wordDisplay.innerText = countdown;
+            timerDisplay.innerText = `Time: 15`;
+            timerDisplay.style.color = '#f39c12';
+            
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    wordDisplay.innerText = countdown;
+                } else if (countdown === 0) {
+                    wordDisplay.innerText = "GO!";
+                } else {
+                    clearInterval(countdownInterval);
+                    startActualGame();
+                }
+            }, 1000);
+        }
+
+        function startActualGame() {
+            score = 0;
+            timeLeft = 15; 
+            gameActive = true;
+            isNeutral = false; 
+            scoreDisplay.innerText = `Score: ${score}`;
+            nextWord();
+
+            window.addEventListener('devicemotion', handleMotion);
+
+            const timerInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.innerText = `Time: ${timeLeft}`;
+                
+                if (timeLeft <= 5) {
+                    timerDisplay.style.color = '#e74c3c'; 
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            gameActive = false;
+            window.removeEventListener('devicemotion', handleMotion);
+            wordDisplay.innerText = "TIME'S UP!";
+            setTimeout(() => {
+                alert(`Game Over! Your score: ${score}`);
+                location.reload(); 
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
