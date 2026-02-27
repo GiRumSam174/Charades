@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Sensor Charades v1.05</title>
+    <title>Sensor Charades v1.08</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1a1a2e">
@@ -21,7 +21,7 @@
             align-items: center;
             height: 100vh;
             text-align: center;
-            user-select: none; /* Prevents accidental text highlighting */
+            user-select: none; 
         }
 
         #game-container {
@@ -77,15 +77,53 @@
             z-index: 10;
         }
 
+        #game-over-screen h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        
+        #game-over-screen h2 {
+            font-size: 2rem;
+            margin-top: 0;
+            margin-bottom: 30px;
+        }
+
+        .list-container {
+            width: 90%;
+            max-width: 600px;
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        .list-title {
+            font-size: 1rem;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .word-list {
+            font-size: 0.85rem; 
+            white-space: nowrap; 
+            overflow-x: auto; 
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 0;
+            -webkit-overflow-scrolling: touch; 
+        }
+
+        .correct-color { color: #2ecc71; }
+        .pass-color { color: #e74c3c; }
+
         button {
             padding: 20px 40px;
-            font-size: 2rem;
+            font-size: 1.5rem;
             background: #e94560;
             color: white;
             border: none;
             border-radius: 10px;
             cursor: pointer;
-            margin-top: 20px;
+            margin-top: 10px;
         }
 
         .correct { background-color: #2ecc71 !important; }
@@ -94,23 +132,39 @@
 </head>
 <body>
 
-    <div id="overlay" class="overlay">
+    <div id="start-screen" class="overlay">
         <h1>SENSOR CHARADES</h1>
         <p>Hold phone to forehead in Landscape.</p>
         <p>Tilt UP (Ceiling) for Correct | Tilt DOWN (Floor) to Pass</p>
         <button onclick="startGame()">START GAME</button>
-        <div style="position: absolute; bottom: 10px; font-size: 0.8rem; color: #7f8c8d;">v1.05</div>
+        <div style="position: absolute; bottom: 10px; font-size: 0.8rem; color: #7f8c8d;">v1.08</div>
     </div>
 
-    <div id="game-container">
+    <div id="game-container" style="display: none;">
         <div id="score">Score: 0</div>
-        <div id="timer">Time: 15</div> 
+        <div id="timer">Time: 40</div> 
         <div id="word-display">READY?</div>
         <div id="sensor-status">Sensors: Waiting... (Must be HTTPS)</div>
     </div>
 
+    <div id="game-over-screen" class="overlay" style="display: none;">
+        <h1>TIME'S UP!</h1>
+        <h2>Final Score: <span id="final-score">0</span></h2>
+        
+        <div class="list-container">
+            <div class="list-title correct-color">Got It:</div>
+            <div id="correct-list" class="word-list correct-color"></div>
+        </div>
+
+        <div class="list-container">
+            <div class="list-title pass-color">Skipped:</div>
+            <div id="skipped-list" class="word-list pass-color"></div>
+        </div>
+
+        <button onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+
     <script>
-        // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
@@ -123,18 +177,52 @@
             "Pizza", "Elephant", "Moonwalk", "Superhero", "Sneeze", "Taco", "Surfing", "Guitar", "Dentist", "Gorilla",
             "Basketball", "Chef", "Submarine", "Spider-Man", "Washing Machine", "Yoga", "Butterfly", "Ice Cream", "Zebra", "Airplane",
             "Fishing", "Harry Potter", "Roller Coaster", "Robot", "Statue of Liberty", "Lawn Mower", "Ballet", "Pirate", "Firefighter", "Popcorn",
+            "Crying", "Baking", "Driving", "Hiking", "Skiing", "Knitting", "Singing", "Boxing", "Climbing", "Painting",
+            "Doctor", "Teacher", "Astronaut", "Farmer", "Pilot", "Mechanic", "Waiter", "Lawyer", "Scientist", "Artist",
+            "Lion", "Penguin", "Giraffe", "Snake", "Monkey", "Kangaroo", "Dolphin", "Octopus", "Chicken", "Rabbit",
+            "London", "Paris", "New York", "Beach", "Mountain", "Forest", "Desert", "Space", "Library", "Hospital",
+            "Star Wars", "Disney", "Netflix", "TikTok", "YouTube", "iPhone", "Superman", "Batman", "Wonder Woman", "Joker",
+            "Bowling", "Tennis", "Soccer", "Baseball", "Swimming", "Cycling", "Archery", "Karate", "Surfing", "Golf",
+            "Laptop", "Headphones", "Camera", "Watch", "Umbrella", "Backpack", "Sunglasses", "Guitar", "Piano", "Drums",
+            "Coffee", "Burger", "Sushi", "Donut", "Spaghetti", "Watermelon", "Carrot", "Chocolate", "Pineapple", "Sandwich",
+            "Waking Up", "Brushing Teeth", "Showering", "Sleeping", "Running", "Dancing", "Jumping", "Laughing", "Whispering", "Clapping",
+            "The Matrix", "Titanic", "Avatar", "Frozen", "Shrek", "Lion King", "Toy Story", "Iron Man", "Black Panther", "Thor",
+            "Eiffel Tower", "Great Wall of China", "Pyramids", "Big Ben", "Grand Canyon", "Mount Everest", "Amazon River", "Antarctica", "Mars", "Saturn",
+            "Rain", "Snow", "Thunder", "Rainbow", "Wind", "Sunshine", "Cloud", "Tornado", "Earthquake", "Volcano",
+            "Cinderella", "Snow White", "Pikachu", "Mickey Mouse", "Bugs Bunny", "SpongeBob", "Scooby Doo", "Bart Simpson", "Mario", "Sonic",
+            "Halloween", "Christmas", "Birthday", "Wedding", "Graduation", "Party", "Vacation", "Weekend", "Monday", "Summer",
+            "Red", "Blue", "Green", "Yellow", "Purple", "Orange", "Pink", "Black", "White", "Gold",
+            "Square", "Circle", "Triangle", "Star", "Heart", "Diamond", "Hexagon", "Cylinder", "Cube", "Sphere",
+            "Book", "Pen", "Paper", "Scissors", "Key", "Wallet", "Phone", "Mirror", "Hammer", "Flashlight",
             "Jurassic Park", "The Lord of the Rings", "Back to the Future", "Jaws", "Ghostbusters", "E.T.", 
-            "Walking the Dog", "Doing Laundry", "Taking out the Trash", "Parallel Parking", "Riding a Unicycle"
-        ]; // Shortened for display, you can paste the full list back in!
+            "Indiana Jones", "The Terminator", "Gladiator", "Finding Nemo", "The Incredibles", "Pulp Fiction", 
+            "Forrest Gump", "Men in Black", "Home Alone", "Willy Wonka", "The Wizard of Oz", "Pirates of the Caribbean",
+            "Mean Girls", "The Avengers", "Jumanji", "Despicable Me", "Grease", "The Hunger Games", "Twilight",
+            "Walking the Dog", "Doing Laundry", "Taking out the Trash", "Parallel Parking", "Riding a Unicycle", 
+            "Juggling", "Getting a Haircut", "Mowing the Lawn", "Painting the Mona Lisa", "Winning the Lottery", 
+            "Stubbing Your Toe", "Caught in the Rain", "Blowing out Candles", "Flipping a Pancake", "Stepping on a Lego", 
+            "Singing in the Shower", "Arm Wrestling", "Changing a Diaper", "Riding a Mechanical Bull", "Walking a Tightrope",
+            "Biting Your Nails", "Scrolling on Phone", "Taking a Selfie", "Putting on Makeup", "Tying Your Shoes",
+            "Unicorn", "T-Rex", "Vampire", "Zombie", "Mermaid", "Sloth", "Chameleon", "Raccoon", "Flamingo", "Owl",
+            "Godzilla", "King Kong", "Darth Vader", "Sherlock Holmes", "James Bond", "Frankenstein", "Dracula", "Ninja", "Samurai", "Centaur",
+            "Building a Snowman", "Making a Pizza", "Trying to Fly", "Catching a Ghost", "Fighting a Bear", 
+            "Defusing a Bomb", "Sneezing with Eyes Open", "Walking on the Moon", "Surfing a Tsunami", "Wrestling an Alligator",
+            "Toilet Paper", "Magic Wand", "Boombox", "Hoverboard", "Lightsaber", 
+            "Time Machine", "Bungee Cord", "Pogo Stick", "Fidget Spinner", "VR Headset"
+        ];
 
         let score = 0;
-        let timeLeft = 15; 
+        let timeLeft = 40; 
         let gameActive = false;
         
         let isNeutral = false; 
         let isProcessing = false; 
         let sensorsConfirmed = false;
         
+        let currentWord = "";
+        let correctWordsList = [];
+        let skippedWordsList = [];
+
         const wordDisplay = document.getElementById('word-display');
         const scoreDisplay = document.getElementById('score');
         const timerDisplay = document.getElementById('timer');
@@ -180,8 +268,8 @@
         function nextWord() {
             if (words.length === 0) return "Game Over!";
             const randomIndex = Math.floor(Math.random() * words.length);
-            const word = words.splice(randomIndex, 1)[0];
-            wordDisplay.innerText = word;
+            currentWord = words.splice(randomIndex, 1)[0]; 
+            wordDisplay.innerText = currentWord;
             isProcessing = false; 
         }
 
@@ -192,10 +280,12 @@
 
             if (type === 'correct') {
                 score++;
+                correctWordsList.push(currentWord); 
                 scoreDisplay.innerText = `Score: ${score}`;
                 container.classList.add('correct');
                 playSound('correct');
             } else {
+                skippedWordsList.push(currentWord); 
                 container.classList.add('pass');
                 playSound('pass');
             }
@@ -209,7 +299,6 @@
         function handleMotion(event) {
             let z = event.accelerationIncludingGravity ? event.accelerationIncludingGravity.z : null;
             
-            // FIX: Only confirm sensors if Z actually has a numeric value (not null)
             if (!sensorsConfirmed && z !== null) {
                 sensorsConfirmed = true;
                 sensorStatus.innerText = "Sensors: Active!";
@@ -237,11 +326,12 @@
                 } catch (e) { console.error(e); }
             }
 
-            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-container').style.display = 'flex';
             
             let countdown = 3;
             wordDisplay.innerText = countdown;
-            timerDisplay.innerText = `Time: 15`;
+            timerDisplay.innerText = `Time: 40`;
             timerDisplay.style.color = '#f39c12';
             
             const countdownInterval = setInterval(() => {
@@ -259,9 +349,13 @@
 
         function startActualGame() {
             score = 0;
-            timeLeft = 15; 
+            timeLeft = 40; 
             gameActive = true;
             isNeutral = false; 
+            
+            correctWordsList = [];
+            skippedWordsList = [];
+            
             scoreDisplay.innerText = `Score: ${score}`;
             nextWord();
 
@@ -285,11 +379,14 @@
         function endGame() {
             gameActive = false;
             window.removeEventListener('devicemotion', handleMotion);
-            wordDisplay.innerText = "TIME'S UP!";
-            setTimeout(() => {
-                alert(`Game Over! Your score: ${score}`);
-                location.reload(); 
-            }, 1000);
+            
+            document.getElementById('game-container').style.display = 'none';
+            const gameOverScreen = document.getElementById('game-over-screen');
+            gameOverScreen.style.display = 'flex';
+            
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('correct-list').innerText = correctWordsList.length > 0 ? correctWordsList.join(', ') : "None";
+            document.getElementById('skipped-list').innerText = skippedWordsList.length > 0 ? skippedWordsList.join(', ') : "None";
         }
     </script>
 </body>
