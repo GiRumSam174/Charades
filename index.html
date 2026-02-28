@@ -298,6 +298,17 @@
         }
 
         async function startGame() {
+
+// --- ADD THIS BLOCK TO UNLOCK AUDIO ---
+            soundCorrect.play().catch(e => {});
+            soundCorrect.pause();
+            soundCorrect.currentTime = 0;
+
+            soundPass.play().catch(e => {});
+            soundPass.pause();
+            soundPass.currentTime = 0;
+            // --------------------------------------
+
             if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                 try {
                     const permission = await DeviceMotionEvent.requestPermission();
