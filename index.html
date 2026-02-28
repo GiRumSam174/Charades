@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Sensor Charades v1.15</title>
+    <title>Sensor Charades v1.16</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1a1a2e">
@@ -137,7 +137,7 @@
         <p>Hold phone to forehead in Landscape.</p>
         <p>Tilt UP (Ceiling) for Correct | Tilt DOWN (Floor) to Pass</p>
         <button onclick="startGame()">START GAME</button>
-        <div style="position: absolute; bottom: 10px; font-size: 0.8rem; color: #7f8c8d;">v1.08</div>
+        <div style="position: absolute; bottom: 10px; font-size: 0.8rem; color: #7f8c8d;">v1.16</div>
     </div>
 
     <div id="game-container" style="display: none;">
@@ -229,7 +229,12 @@
         const sensorStatus = document.getElementById('sensor-status');
         const container = document.getElementById('game-container');
         
+        // --- HYBRID AUDIO SETUP ---
         let audioCtx;
+        
+        // Reference the external MP3 files
+        const mp3Correct = new Audio('ding-correct.mp3');
+        const mp3Pass = new Audio('buzzer-wrong.mp3');
 
         function initAudio() {
             if (!audioCtx) {
@@ -240,7 +245,8 @@
             }
         }
 
-        function playSound(type) {
+        // The Backup Synthesizer
+        function playSynth(type) {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
@@ -262,6 +268,24 @@
                 gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.6);
+            }
+        }
+
+        function playSound(type) {
+            const audioFile = type === 'correct' ? mp3Correct : mp3Pass;
+            
+            // Clone the audio node to allow for rapid replays and prevent Android bugs
+            const clone = audioFile.cloneNode();
+            const playPromise = clone.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    // If the file is missing (404) or blocked, fall back to the synth immediately!
+                    console.log("MP3 Playback failed, falling back to synthesizer.", error);
+                    playSynth(type);
+                });
+            } else {
+                playSynth(type);
             }
         }
 
@@ -307,11 +331,9 @@
 
             if (!gameActive || isProcessing || z === null) return; 
 
-            // The neutral zone is between -4 and 4 (mostly upright)
             if (Math.abs(z) < 4) {
                 isNeutral = true;
             } 
-            // INCREASED SENSITIVITY THRESHOLD: Was 6, now 7.5 (requires steeper tilt)
             else if (z > 7.5 && isNeutral) {
                 handleGuess('correct');
             } else if (z < -7.5 && isNeutral) {

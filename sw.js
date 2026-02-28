@@ -1,10 +1,12 @@
-const CACHE_NAME = 'charades-cache-v1.15';
+const CACHE_NAME = 'charades-cache-v1.16';
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'
+  './buzzer-wrong.mp3'
+  './ding-correct.mp3'
 ];
 
 // Install the service worker and cache the files
