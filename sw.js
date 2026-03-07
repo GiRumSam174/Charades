@@ -1,4 +1,4 @@
-const CACHE_NAME = 'charades-cache-v1.17';
+const CACHE_NAME = 'charades-cache-v1.17A';
 const urlsToCache = [
   './',
   './index.html',
