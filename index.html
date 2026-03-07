@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Sensor Charades v1.16</title>
+    <title>Sensor Charades v1.17</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1a1a2e">
@@ -137,12 +137,12 @@
         <p>Hold phone to forehead in Landscape.</p>
         <p>Tilt UP (Ceiling) for Correct | Tilt DOWN (Floor) to Pass</p>
         <button onclick="startGame()">START GAME</button>
-        <div style="position: absolute; bottom: 10px; font-size: 0.8rem; color: #7f8c8d;">v1.16</div>
+        <div style="position: absolute; bottom: 10px; font-size: 0.8rem; color: #7f8c8d;">v1.17</div>
     </div>
 
     <div id="game-container" style="display: none;">
         <div id="score">Score: 0</div>
-        <div id="timer">Time: 40</div> 
+        <div id="timer">Time: 90</div> 
         <div id="word-display">READY?</div>
         <div id="sensor-status">Sensors: Waiting... (Must be HTTPS)</div>
     </div>
@@ -212,7 +212,7 @@
         ];
 
         let score = 0;
-        let timeLeft = 40; 
+        let timeLeft = 90; 
         let gameActive = false;
         
         let isNeutral = false; 
@@ -356,7 +356,7 @@
             
             let countdown = 3;
             wordDisplay.innerText = countdown;
-            timerDisplay.innerText = `Time: 40`;
+            timerDisplay.innerText = `Time: 90`;
             timerDisplay.style.color = '#f39c12';
             
             const countdownInterval = setInterval(() => {
@@ -374,7 +374,7 @@
 
         function startActualGame() {
             score = 0;
-            timeLeft = 40; 
+            timeLeft = 90; 
             gameActive = true;
             isNeutral = false; 
             
